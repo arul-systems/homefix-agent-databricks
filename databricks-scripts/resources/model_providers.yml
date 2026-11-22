@@ -1,0 +1,27 @@
+# OpenAI model provider service. The API key lives in a Unity Catalog secret; the provider
+# references it, so rotating the secret needs no change to the provider.
+resources:
+  secrets:
+    openai_api_key:
+      catalog_name: ${resources.schemas.ai_gateway.catalog_name}
+      schema_name: ${resources.schemas.ai_gateway.name}
+      name: openai-api-key
+      value: ${var.openai_api_key}
+      comment: OpenAI API key used by the openai model provider service
+
+  model_provider_services:
+    openai:
+      parent: schemas/${resources.schemas.ai_gateway.catalog_name}.${resources.schemas.ai_gateway.name}
+      model_provider_service_id: ${var.openai_provider_service_id}
+      comment: OpenAI model provider
+      config:
+        provider_type: EXTERNAL_MODEL_PROVIDER_TYPE_OPENAI
+        openai:
+          direct:
+            api_key:
+              secret_reference:
+                name: secrets/${resources.secrets.openai_api_key.catalog_name}.${resources.secrets.openai_api_key.schema_name}.${resources.secrets.openai_api_key.name}
+        targets:
+          - model: ${var.openai_model}
+            native_api_types:
+              - openai/v1/chat/completions

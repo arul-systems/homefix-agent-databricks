@@ -1,0 +1,68 @@
+# AI Gateway model services: governed endpoints that show up under AI Gateway.
+# Each has a per-user and a whole-service rate limit (values in databricks.yml).
+resources:
+  model_services:
+    gpt_6_sol:
+      parent: schemas/${resources.schemas.ai_gateway.catalog_name}.${resources.schemas.ai_gateway.name}
+      model_service_id: ${var.gpt_model_service_id}
+      comment: GPT 6 sol through the OpenAI model provider service
+      config:
+        rate_limits:
+          - key: RATE_LIMIT_KEY_USER_DEFAULT
+            renewal_period: RATE_LIMIT_RENEWAL_PERIOD_MINUTE
+            requests: ${var.gpt_user_requests_per_min}
+            tokens: ${var.gpt_user_tokens_per_min}
+          - key: RATE_LIMIT_KEY_SERVICE
+            renewal_period: RATE_LIMIT_RENEWAL_PERIOD_MINUTE
+            requests: ${var.gpt_service_requests_per_min}
+            tokens: ${var.gpt_service_tokens_per_min}
+        routing:
+          destinations:
+            - name: openai-${var.openai_model}
+              destination_type: DESTINATION_TYPE_EXTERNAL_FOUNDATION_MODEL
+              external_model_config:
+                model_provider_service: model-provider-services/${resources.schemas.ai_gateway.catalog_name}.${resources.schemas.ai_gateway.name}.${resources.model_provider_services.openai.model_provider_service_id}
+                target:
+                  model: ${var.openai_model}
+
+    llama_3_1_8b:
+      parent: schemas/${resources.schemas.ai_gateway.catalog_name}.${resources.schemas.ai_gateway.name}
+      model_service_id: ${var.llama_8b_model_service_id}
+      comment: Databricks-hosted Llama 3.1 8B Instruct
+      config:
+        rate_limits:
+          - key: RATE_LIMIT_KEY_USER_DEFAULT
+            renewal_period: RATE_LIMIT_RENEWAL_PERIOD_MINUTE
+            requests: ${var.llama_user_requests_per_min}
+            tokens: ${var.llama_user_tokens_per_min}
+          - key: RATE_LIMIT_KEY_SERVICE
+            renewal_period: RATE_LIMIT_RENEWAL_PERIOD_MINUTE
+            requests: ${var.llama_service_requests_per_min}
+            tokens: ${var.llama_service_tokens_per_min}
+        routing:
+          destinations:
+            - name: llama-3-1-8b-instruct
+              destination_type: DESTINATION_TYPE_PAY_PER_TOKEN_FOUNDATION_MODEL
+              pay_per_token_config:
+                model: models/${var.llama_8b_model}
+
+    llama_3_3_70b:
+      parent: schemas/${resources.schemas.ai_gateway.catalog_name}.${resources.schemas.ai_gateway.name}
+      model_service_id: ${var.llama_70b_model_service_id}
+      comment: Databricks-hosted Llama 3.3 70B Instruct
+      config:
+        rate_limits:
+          - key: RATE_LIMIT_KEY_USER_DEFAULT
+            renewal_period: RATE_LIMIT_RENEWAL_PERIOD_MINUTE
+            requests: ${var.llama_user_requests_per_min}
+            tokens: ${var.llama_user_tokens_per_min}
+          - key: RATE_LIMIT_KEY_SERVICE
+            renewal_period: RATE_LIMIT_RENEWAL_PERIOD_MINUTE
+            requests: ${var.llama_service_requests_per_min}
+            tokens: ${var.llama_service_tokens_per_min}
+        routing:
+          destinations:
+            - name: llama-3-3-70b-instruct
+              destination_type: DESTINATION_TYPE_PAY_PER_TOKEN_FOUNDATION_MODEL
+              pay_per_token_config:
+                model: models/${var.llama_70b_model}

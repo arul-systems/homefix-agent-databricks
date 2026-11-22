@@ -1,0 +1,7 @@
+# Schema that holds every AI Gateway object this bundle creates.
+resources:
+  schemas:
+    ai_gateway:
+      catalog_name: ${var.catalog}
+      name: ${var.schema}
+      comment: AI Gateway model providers and model services for HomeFix (create-model-service bundle)

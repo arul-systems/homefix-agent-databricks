@@ -1,0 +1,72 @@
+# Databricks Asset Bundle: create-model-service
+#
+# Creates AI Gateway (Unity Catalog) resources, all inside one schema:
+#   1. A UC secret holding the OpenAI API key (value read from .env)
+#   2. An OpenAI model provider service that uses that secret
+#   3. Model services (governed AI Gateway endpoints):
+#        - GPT 6 sol            -> via the OpenAI model provider service
+#        - Llama 3.1 8B Instruct -> Databricks-hosted foundation model (system.ai)
+#        - Llama 3.3 70B Instruct -> Databricks-hosted foundation model (system.ai)
+#
+# Deploy with ./scripts/deploy.sh (loads .env and passes OPENAI_API_KEY as a bundle variable).
+
+bundle:
+  name: create-model-service
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog that holds the AI Gateway schema.
+    default: agent_workspace_7474653685104191
+  schema:
+    description: Schema created by this bundle for the secret, provider and model services.
+    default: homefix_ai
+
+  # --- OpenAI model provider ---
+  openai_api_key:
+    description: OpenAI API key. Set from .env by deploy.sh (BUNDLE_VAR_openai_api_key); never commit it.
+  openai_provider_service_id:
+    default: openai
+  openai_model:
+    description: Provider-side OpenAI model identifier.
+    default: gpt-6-sol
+
+  # --- Model service names ---
+  gpt_model_service_id:
+    default: homefix-gpt-6-sol
+  llama_8b_model_service_id:
+    default: homefix-llama-3-1-8b-instruct
+  llama_70b_model_service_id:
+    default: homefix-llama-3-3-70b-instruct
+
+  # --- Databricks-hosted foundation models (Unity Catalog names) ---
+  llama_8b_model:
+    default: system.ai.meta_llama_v3_1_8b_instruct
+  llama_70b_model:
+    default: system.ai.llama_v3_3_70b_instruct
+
+  # --- Rate limits (per minute). Per-user limits apply to each caller separately;
+  #     service limits cap total traffic across all callers. ---
+  gpt_user_requests_per_min:
+    default: 20
+  gpt_user_tokens_per_min:
+    default: 20000
+  gpt_service_requests_per_min:
+    default: 100
+  gpt_service_tokens_per_min:
+    default: 100000
+  llama_user_requests_per_min:
+    default: 60
+  llama_user_tokens_per_min:
+    default: 60000
+  llama_service_requests_per_min:
+    default: 300
+  llama_service_tokens_per_min:
+    default: 300000
+
+targets:
+  dev:
+    default: true
+    # Workspace comes from the auth profile (DATABRICKS_CONFIG_PROFILE in .env, or -p/--profile).

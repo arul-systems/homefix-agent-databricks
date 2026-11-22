@@ -1,0 +1,15 @@
+schema_version = 1
+
+[agent]
+framework = "langgraph"
+server = "agentbricks"
+deployment_name = "list"
+
+[memory_store]
+name = "homefix-agent-ncpkhb-memory"
+
+[session_store]
+name = "homefix-agent-ncpkhb-sessions"
+
+[tracing]
+experiment_name = "/Shared/agentbricks_traces/homefix-agent-ncpkhb"
