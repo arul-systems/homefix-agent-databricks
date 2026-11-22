@@ -1,76 +1,52 @@
+"""HomeFix agent graph.
+
+Every request goes to the router (Llama 3.1 8B), which sends it to one specialist:
+
+    START -> router -> order_management (Llama 3.3 70B) -> END
+                    -> building_plan   (GPT 6 sol)      -> END
+
+Each node lives in ``agent/node/`` with its own tools; models are the AI Gateway model services
+created by ``databricks-scripts/scripts/deploy.sh`` (names in ``agent/common.py``).
+"""
+
 import os
 from collections.abc import AsyncGenerator, Callable
-from functools import lru_cache
 from typing import Any
 
 from databricks.sdk import WorkspaceClient
-from databricks_langchain import ChatDatabricks
-from langchain.agents import create_agent
-from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain.agents.middleware.human_in_the_loop import HITLResponse
+from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.types import Command
 from pydantic import TypeAdapter, ValidationError
 
-from agent.mcps import build_mcp_servers
-
-# Importing the tools package auto-registers every tool module.
-from agent.tools import all_tools
-from databricks_agentkit import workspace_client, workspace_headers
+from agent.common import ROUTER_MODEL, app_workspace_client
+from agent.node import REQUIRE_APPROVAL, building_plan, order_management
+from agent.node.router import BUILDING_PLAN, ORDER_MANAGEMENT, next_node, router
 from databricks_agentkit.langgraph import (
     checkpointer,
     configure_tracing,
     genie_tools,
-    mcp_tools,
     memory_tools,
     start_trace,
     thread_config,
 )
-from databricks_agentkit.langgraph.messages import gateway_messages
 from databricks_agentkit.langgraph.session_store import (
     invocation_id_from_metadata,
     invocation_metadata,
 )
 from databricks_agentkit.runtime.auth import AuthError
-from databricks_agentkit.runtime.tool_manifest import resolve_model_service
 
-# A Unity Catalog AI Gateway model service, served from the `system.ai` schema and queried through
-# the gateway (see `use_ai_gateway=True` below). Swap for any `system.ai.*` model service your
-# workspace exposes — the demo chat app's picker lists what's available.
-# `agentbricks experimental models bind` swaps this for a model service you own (wired in by `agentbricks deploy`
-# as AGENT_MODEL_SERVICE_AGENT), so `agentbricks experimental models upgrade` can change the model without a code
-# change.
-MODEL = resolve_model_service() or "system.ai.claude-sonnet-5-5"
+# The chat app shows this as the agent's default model. The graph doesn't use a single model: each
+# node uses its own model service, so the chat app's model picker has no effect.
+MODEL = ROUTER_MODEL
 
-# Tools that require human approval before they run. Map a tool name to True to allow every decision
-# (approve / edit / reject / respond), or to a config dict to restrict them (see HumanInTheLoopMiddleware).
-# When a listed tool is about to run, the agent pauses and emits an `interrupt` event; the client
-# resumes by sending `resume` with the same session id. Empty this dict to disable approval gating.
-REQUIRE_APPROVAL = {"send_message": True}
+__all__ = ["MODEL", "REQUIRE_APPROVAL", "configure", "create_agent_graph", "run_agent"]
 
 
-class _RoutedChatDatabricks(ChatDatabricks):
-    """Forward account-host workspace routing to the underlying OpenAI clients."""
+class HomeFixState(MessagesState):
+    """Conversation messages plus the specialist the router picked for this turn."""
 
-    def _get_client_kwargs(self) -> dict[str, Any]:
-        kwargs = super()._get_client_kwargs()
-        if headers := workspace_headers():
-            kwargs["default_headers"] = headers
-        return kwargs
-
-    def _prepare_inputs(self, messages: list[Any], *args: Any, **kwargs: Any) -> dict[str, Any]:
-        # Send Claude 5.x reasoning (and its signature) back to the model on the next turn.
-        return super()._prepare_inputs(gateway_messages(messages), *args, **kwargs)
-
-
-@lru_cache(maxsize=1)
-def _app_workspace_client() -> WorkspaceClient:
-    """The App's own client, shared across turns.
-
-    Constructing a WorkspaceClient resolves auth with blocking network calls (and, locally, a
-    `databricks auth token` subprocess). Doing that per turn inside the async graph builder stalls
-    every request on the event loop; the SDK refreshes tokens itself, so one client suffices.
-    """
-    return workspace_client()
+    route: str
 
 
 def configure() -> None:
@@ -80,14 +56,9 @@ def configure() -> None:
 
 
 def _check_databricks_auth() -> None:
-    """Fail fast at startup with a clear message if Databricks auth isn't configured.
-
-    Without this, a missing/invalid profile only surfaces on the first model call — as a generic SDK
-    error buried in a request traceback. Resolving a WorkspaceClient here validates the same config
-    the model client uses, so the failure is immediate and actionable.
-    """
+    """Fail fast at startup with a clear message if Databricks auth isn't configured."""
     try:
-        _app_workspace_client()
+        app_workspace_client()
     except Exception as e:
         profile = os.getenv("DATABRICKS_CONFIG_PROFILE")
         target = (
@@ -109,36 +80,27 @@ async def create_agent_graph(
     *,
     workspace_client_for: Callable[[str], WorkspaceClient] | None = None,
 ):
-    """Build the LangGraph agent: local tools + long-term-memory tools + any MCP tools.
+    """Build the router -> specialist graph.
 
-    ``actor`` is the identity whose long-term memory the agent reads/writes; it's captured in the
-    memory tools' closures (never exposed to the model).
-
-    ``model`` selects the gateway model for this run; the chat UI passes the picker's choice and
-    everything else falls back to ``MODEL``. The agent is rebuilt per turn, so the model can vary
-    request to request.
+    ``actor`` scopes the long-term-memory tools. ``model`` is accepted for runtime compatibility
+    and ignored: each node uses its own model service. Memory and Genie tools from ``agent.toml``
+    bindings (empty when unbound) are given to both specialists.
     """
-    mcp = await mcp_tools(build_mcp_servers(), workspace_client_for=workspace_client_for)
-    tools = [
-        *all_tools(),
+    shared_tools = [
         *memory_tools(actor),
         *genie_tools(workspace_client_for=workspace_client_for),
-        *mcp,
     ]
-    middleware = (
-        [HumanInTheLoopMiddleware(interrupt_on=REQUIRE_APPROVAL)] if REQUIRE_APPROVAL else []
-    )
-    endpoint = model or MODEL
-    return create_agent(
-        # use_ai_gateway routes to the Unity Catalog AI Gateway (`<host>/ai-gateway/mlflow/v1`), so
-        # `endpoint` is a `system.ai.*` model name rather than a serving-endpoint name.
-        model=_RoutedChatDatabricks(
-            endpoint=endpoint, workspace_client=_app_workspace_client(), use_ai_gateway=True
-        ),
-        tools=tools,
-        middleware=middleware,
-        checkpointer=checkpointer(),
-    )
+
+    builder = StateGraph(HomeFixState)
+    builder.add_node("router", router)
+    builder.add_node(ORDER_MANAGEMENT, order_management.build(shared_tools))
+    builder.add_node(BUILDING_PLAN, building_plan.build(shared_tools))
+
+    builder.add_edge(START, "router")
+    builder.add_conditional_edges("router", next_node, [ORDER_MANAGEMENT, BUILDING_PLAN])
+    builder.add_edge(ORDER_MANAGEMENT, END)
+    builder.add_edge(BUILDING_PLAN, END)
+    return builder.compile(checkpointer=checkpointer())
 
 
 async def recovery_input(

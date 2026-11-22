@@ -25,10 +25,10 @@ connected" for memory locally even when a store is bound, and the session indica
 in-process state. Both connect after `agentbricks deploy`. To use real stores locally, set
 `AGENT_MEMORY_STORE` and `AGENT_SESSION_STORE` in the project's `.env`.
 
-Tools opens a pane listing the `agent.toml` bindings, the Python tools from `agent.tools.all_tools()`,
+Tools opens a pane listing the `agent.toml` bindings, the Python tools from `agent.node.all_tools()`,
 and the `agentbricks tools add …` commands to copy. It reads `GET /api/demo/tools`, which re-reads
 `agent.toml` on each request, so `tools add`/`remove` show up after a refresh. A bad `agent.toml` or
-`agent.tools` import shows as an error in the pane. MCP servers from `agent/mcps.py` are not listed.
+`agent.node` import shows as an error in the pane.
 
 The Memory pane has two tabs. **Entries** browses the store's memories by actor. In a deployed app
 with both stores bound, **Pipeline** shows the memory pipeline for that session store + memory store

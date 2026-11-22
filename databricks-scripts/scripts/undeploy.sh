@@ -25,6 +25,7 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 # Bundle variables must resolve even when destroying; the key value itself isn't needed.
 export BUNDLE_VAR_openai_api_key="${OPENAI_API_KEY:-unused-for-destroy}"
+export BUNDLE_VAR_agent_principal="${AGENT_APP_PRINCIPAL:-unused-for-destroy}"
 [[ -n "${OPENAI_MODEL:-}" ]] && export BUNDLE_VAR_openai_model="$OPENAI_MODEL"
 [[ -n "${UC_CATALOG:-}" ]] && export BUNDLE_VAR_catalog="$UC_CATALOG"
 [[ -n "${UC_SCHEMA:-}" ]] && export BUNDLE_VAR_schema="$UC_SCHEMA"

@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from agent.tools import all_tools
+from agent.node import all_tools
 from langchain_core.tools import BaseTool
 from runtime.adapter import _serialize_events
 
@@ -21,19 +21,19 @@ from databricks_agentkit.langgraph.session_store import (
 )
 
 
-def test_tools_autoregister():
+def test_node_tools_are_collected():
     tools = all_tools()
-    assert tools, "expected the sample tool to auto-register"
     assert all(isinstance(t, BaseTool) for t in tools)
-    assert {"get_current_time", "send_message"} <= {t.name for t in tools}
+    assert {"list_orders", "get_order_status", "cancel_order"} <= {t.name for t in tools}
+    assert {"estimate_materials", "estimate_cost", "permit_requirements"} <= {t.name for t in tools}
 
 
 def test_gated_tool_is_in_require_approval():
     # The gated demo tool must exist and be listed for approval, or the HITL demo does nothing.
     from agent.agent import REQUIRE_APPROVAL
 
-    assert REQUIRE_APPROVAL.get("send_message")
-    assert "send_message" in {t.name for t in all_tools()}
+    assert REQUIRE_APPROVAL.get("cancel_order")
+    assert "cancel_order" in {t.name for t in all_tools()}
 
 
 class _FakeInterrupt:
@@ -48,7 +48,7 @@ async def _aiter(events):
 
 @pytest.mark.asyncio
 async def test_serialize_events_relays_interrupt_as_native_event():
-    hitl = {"action_requests": [{"name": "send_message", "args": {"recipient": "x", "body": "y"}}]}
+    hitl = {"action_requests": [{"name": "cancel_order", "args": {"order_id": "HF-1003", "reason": "y"}}]}
     stream = _aiter([("updates", {"__interrupt__": (_FakeInterrupt(hitl, "int-1"),)})])
     events = [e async for e in _serialize_events(stream)]
     assert events == [{"type": "interrupt", "id": "int-1", "value": hitl}]
@@ -66,7 +66,7 @@ def test_configure_raises_clear_error_without_auth(monkeypatch):
 
 
 def test_chat_model_forwards_account_routing_header(monkeypatch):
-    from agent.agent import _RoutedChatDatabricks
+    from agent.common import _RoutedChatDatabricks
 
     monkeypatch.setenv("DATABRICKS_WORKSPACE_ID", "123456")
     model = _RoutedChatDatabricks(endpoint="test-endpoint")

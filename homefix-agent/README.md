@@ -10,7 +10,7 @@ The generated project separates portable agent execution from the managed HTTP p
 client -> runtime/main.py -> runtime/adapter.py -> agent/agent.py:run_agent
 ```
 
-- `agent/agent.py` owns the framework-native agent, sessions, tools, MCP lifetime, and `run_agent`.
+- `agent/agent.py` owns the framework-native agent, sessions, tools, and `run_agent`.
 - `runtime/adapter.py` owns the agent-author integration hooks: runtime input/output translation plus
   `invoke` and `recover`.
 - `runtime/main.py` constructs the server and registers those hooks.
@@ -101,8 +101,8 @@ A message's `content` is its answer text. Models that reason (Claude 5.x) add a 
 
 ## Human approval
 
-`send_message` is gated by `HumanInTheLoopMiddleware`. Start a turn asking the agent to use that
-tool. When the output or event stream contains an `interrupt`, submit a new invocation with the same
+`cancel_order` (order management node) is gated by `HumanInTheLoopMiddleware`. Start a turn asking
+the agent to cancel order HF-1003. When the output or event stream contains an `interrupt`, submit a new invocation with the same
 application session:
 
 ```json
@@ -146,10 +146,17 @@ Use `agentbricks init --framework langgraph --disable-chat-app` for API-only out
 
 ## Configure and deploy
 
-- Change the model, instructions, tools, graph, and framework-native execution in `agent/agent.py`.
+- The graph (router -> order management | building plan) and framework-native execution live in
+  `agent/agent.py`.
+- Each node is one file in `agent/node/` with its instructions and tools; add a tool to the node's
+  `TOOLS` list. Model service names are in `agent/common.py` (override with `HOMEFIX_*` env vars).
 - Change `runtime/adapter.py` only to map a different application input/output contract.
-- Add local tools under `agent/tools/`; modules are auto-discovered.
-- Add MCP servers in `agent/mcps.py` or with `agentbricks tools add mcp`.
+- Traces are stored in Unity Catalog (`agent_workspace_7474653685104191.homefix_traces`), because the
+  deployed app can't reach the cloud storage MLflow uses for experiment-stored span data. After
+  binding a new experiment with `agentbricks tracing bind`, run
+  `uv run python scripts/setup_uc_tracing.py` before the first deploy: it creates the experiment,
+  links it to the UC tables, and grants the app access. A UC location can only be linked to an
+  experiment that has no traces yet.
 - Bind long-term memory with `agentbricks memory bind <store>`; `agentbricks deploy` creates the
   store if it doesn't exist. Memory and session stores are off by default in `agentbricks dev` (the
   chat app shows "Not connected" for memory locally) and connect after deploy. To start with

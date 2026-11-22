@@ -21,6 +21,13 @@ cp .env.example .env        # set DATABRICKS_CONFIG_PROFILE and OPENAI_API_KEY
 `deploy.sh` loads `.env`, passes the key to the bundle as `BUNDLE_VAR_openai_api_key`, then runs
 `databricks bundle validate` + `deploy`. Rerun it to rotate the key or apply changes.
 
+## Access for the deployed agent
+
+The agent app runs as its own service principal, so `deploy.sh` grants it `USE_SCHEMA` on the
+schema and `EXECUTE` on each model service. It finds the principal from `AGENT_APP_NAME` in `.env`
+(default `agent-bricks-list`). Deploy the agent app first, then run `deploy.sh`. If the app is
+recreated, it gets a new service principal, so run `deploy.sh` again.
+
 ## Tear down
 
 `./scripts/undeploy.sh` deletes the model services, provider, secret and schema

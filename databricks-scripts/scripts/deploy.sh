@@ -31,6 +31,20 @@ if ! databricks current-user me -o json >/dev/null; then
   exit 1
 fi
 
+# The deployed agent app runs as its own service principal; grant it access to the model services.
+AGENT_APP_NAME="${AGENT_APP_NAME:-agent-bricks-list}"
+if [[ -z "${AGENT_APP_PRINCIPAL:-}" ]]; then
+  AGENT_APP_PRINCIPAL="$(databricks apps get "$AGENT_APP_NAME" -o json \
+    | python3 -c 'import sys,json; print(json.load(sys.stdin).get("service_principal_client_id",""))')" || true
+fi
+if [[ -z "${AGENT_APP_PRINCIPAL:-}" ]]; then
+  echo "error: couldn't find the service principal of app '$AGENT_APP_NAME'." >&2
+  echo "       Deploy the agent first, or set AGENT_APP_NAME / AGENT_APP_PRINCIPAL in $ENV_FILE." >&2
+  exit 1
+fi
+export BUNDLE_VAR_agent_principal="$AGENT_APP_PRINCIPAL"
+echo "==> Granting access to app '$AGENT_APP_NAME' (service principal $AGENT_APP_PRINCIPAL)"
+
 echo "==> Validating bundle"
 databricks bundle validate "$@"
 echo "==> Deploying bundle (schema, OpenAI secret, model provider service, model services)"

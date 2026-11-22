@@ -12,4 +12,4 @@ name = "homefix-agent-ncpkhb-memory"
 name = "homefix-agent-ncpkhb-sessions"
 
 [tracing]
-experiment_name = "/Shared/agentbricks_traces/homefix-agent-ncpkhb"
+experiment_name = "/Shared/agentbricks_traces/homefix-agent-uc"

@@ -1297,10 +1297,10 @@ function renderTools(payload) {
   const from = document.createElement("p");
   from.className = "tools-note";
   const folder = document.createElement("code");
-  folder.textContent = "agent/tools/";
+  folder.textContent = "agent/node/";
   from.append("From ", folder);
   const localGroup = toolsSection("Defined in code", local.length, from);
-  if (!local.length) localGroup.append(toolsEmpty("No Python tools found in agent/tools."));
+  if (!local.length) localGroup.append(toolsEmpty("No Python tools found in agent/node."));
   for (const tool of local) localGroup.append(toolRow(tool.name, tool.description));
 
   // Where to run the commands comes before them, not after.

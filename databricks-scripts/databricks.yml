@@ -24,6 +24,12 @@ variables:
     description: Schema created by this bundle for the secret, provider and model services.
     default: homefix_ai
 
+  # --- Access for the deployed agent app ---
+  agent_principal:
+    description: >-
+      Application (client) ID of the agent app's service principal; it gets USE_SCHEMA on the
+      schema and EXECUTE on every model service. deploy.sh resolves it from AGENT_APP_NAME.
+
   # --- OpenAI model provider ---
   openai_api_key:
     description: OpenAI API key. Set from .env by deploy.sh (BUNDLE_VAR_openai_api_key); never commit it.

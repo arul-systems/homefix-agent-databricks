@@ -1,11 +1,16 @@
 # AI Gateway model services: governed endpoints that show up under AI Gateway.
-# Each has a per-user and a whole-service rate limit (values in databricks.yml).
+# Each has a per-user and a whole-service rate limit (values in databricks.yml), and grants
+# EXECUTE to the agent app's service principal so the deployed agent can call it.
 resources:
   model_services:
     gpt_6_sol:
       parent: schemas/${resources.schemas.ai_gateway.catalog_name}.${resources.schemas.ai_gateway.name}
       model_service_id: ${var.gpt_model_service_id}
       comment: GPT 6 sol through the OpenAI model provider service
+      grants:
+        - principal: ${var.agent_principal}
+          privileges:
+            - EXECUTE
       config:
         rate_limits:
           - key: RATE_LIMIT_KEY_USER_DEFAULT
@@ -29,6 +34,10 @@ resources:
       parent: schemas/${resources.schemas.ai_gateway.catalog_name}.${resources.schemas.ai_gateway.name}
       model_service_id: ${var.llama_8b_model_service_id}
       comment: Databricks-hosted Llama 3.1 8B Instruct
+      grants:
+        - principal: ${var.agent_principal}
+          privileges:
+            - EXECUTE
       config:
         rate_limits:
           - key: RATE_LIMIT_KEY_USER_DEFAULT
@@ -50,6 +59,10 @@ resources:
       parent: schemas/${resources.schemas.ai_gateway.catalog_name}.${resources.schemas.ai_gateway.name}
       model_service_id: ${var.llama_70b_model_service_id}
       comment: Databricks-hosted Llama 3.3 70B Instruct
+      grants:
+        - principal: ${var.agent_principal}
+          privileges:
+            - EXECUTE
       config:
         rate_limits:
           - key: RATE_LIMIT_KEY_USER_DEFAULT

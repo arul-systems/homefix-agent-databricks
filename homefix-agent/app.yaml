@@ -6,7 +6,7 @@ env:
 - name: MLFLOW_TRACKING_URI
   value: databricks
 - name: MLFLOW_EXPERIMENT_ID
-  value: '2962687636698712'
+  value: '1996855423126755'
 - name: AGENT_MEMORY_STORE
   value: homefix-agent-ncpkhb-memory
 - name: AGENT_SESSION_STORE
@@ -20,8 +20,8 @@ env:
 - name: DATABRICKS_AGENTBRICKS_RUNTIME_STORE_LAKEBASE_BRANCH
   value: projects/databricks-internal-custom-agents/branches/production
 - name: DATABRICKS_AGENTBRICKS_RUNTIME_STORE_DATABASE
-  value: agent-bricks-homefix-agent
+  value: agent-bricks-list
 - name: DATABRICKS_AGENTBRICKS_RUNTIME_STORE_USERNAME
-  value: 65db4d7d-981c-43b4-8d63-4f14d2a814bc
+  value: 0dfb44cd-1899-4dfb-8562-454363ad5577
 - name: DATABRICKS_AGENTBRICKS_RUNTIME_STORE_SCHEMA
   value: databricks_agentkit_runtime

@@ -5,3 +5,8 @@ resources:
       catalog_name: ${var.catalog}
       name: ${var.schema}
       comment: AI Gateway model providers and model services for HomeFix (create-model-service bundle)
+      grants:
+        # The agent app's service principal must see the schema to call its model services.
+        - principal: ${var.agent_principal}
+          privileges:
+            - USE_SCHEMA

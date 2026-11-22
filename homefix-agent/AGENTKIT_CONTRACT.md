@@ -37,8 +37,8 @@ that make later bindings ineffective.
 
 Use `databricks_agentkit.langgraph.mcp_tools()` for MCP, UC function, and sandbox bindings, combining
 them with existing servers without duplicates. It applies sandbox downscoping. Local Python tools
-belong in source; the template discovers `BaseTool` objects through
-[agent/tools/__init__.py](agent/tools/__init__.py).
+belong in source; each node in [agent/node/](agent/node/__init__.py) defines its own `TOOLS`, and
+`agent.node.all_tools()` collects them.
 
 Feed selected tools into both model definitions and graph execution while preserving approval
 policy. New bindings must become effective on the next graph construction or restart without

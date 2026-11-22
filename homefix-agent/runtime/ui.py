@@ -255,8 +255,8 @@ def _connected_tools() -> list[dict[str, str]]:
 
 
 def _local_tools() -> list[dict[str, str]]:
-    """The Python tools the agent is built with (``agent.tools.all_tools()``), imported lazily."""
-    from agent.tools import all_tools
+    """The Python tools the agent is built with (``agent.node.all_tools()``), imported lazily."""
+    from agent.node import all_tools
 
     local = []
     for tool in all_tools():
@@ -275,9 +275,9 @@ def _tools() -> dict[str, Any]:
         errors.append({"section": "connected", "message": str(exc)})
     try:
         local = _local_tools()
-    except Exception as exc:  # noqa: BLE001 - surface a broken agent.tools import in the pane
+    except Exception as exc:  # noqa: BLE001 - surface a broken agent.node import in the pane
         local = []
-        errors.append({"section": "local", "message": f"Could not load agent.tools: {exc}"})
+        errors.append({"section": "local", "message": f"Could not load agent.node: {exc}"})
     return {
         "connected": connected,
         "local": local,

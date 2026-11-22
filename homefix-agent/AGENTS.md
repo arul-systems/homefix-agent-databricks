@@ -29,9 +29,9 @@ requests. Exit 75 means it is still deploying; run the same command again. Don't
 
 | Change | File |
 | --- | --- |
-| Framework-native agent and `run_agent` | `agent/agent.py` |
-| Local tools | `agent/tools/` |
-| MCP servers | `agent/mcps.py` |
+| Graph (router -> specialist) and `run_agent` | `agent/agent.py` |
+| Graph nodes and their tools (one file per node) | `agent/node/` |
+| Model service names, chat model factory | `agent/common.py` |
 | Managed runtime `invoke`/`recover` hooks and input/output translation | `runtime/adapter.py` |
 | `DurableAgentServer` construction and hook registration | `runtime/main.py` |
 | Browser and managed-state routes | `runtime/ui.py` |
