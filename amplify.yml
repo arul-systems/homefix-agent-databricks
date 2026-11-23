@@ -1,0 +1,30 @@
+version: 1
+applications:
+  - appRoot: agent-ui
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            # Amplify exposes app environment variables only during the build, so write the ones the
+            # server-side /chat route needs into .env, which the Next.js server reads at runtime.
+            # None has the NEXT_PUBLIC_ prefix, so they stay on the server and never reach the browser.
+            - |
+              for name in DATABRICKS_HOST DATABRICKS_CLIENT_ID DATABRICKS_CLIENT_SECRET AGENT_APP_URL; do
+                if [ -z "$(printenv "$name")" ]; then
+                  echo "Missing environment variable: $name" >&2
+                  exit 1
+                fi
+                echo "$name=$(printenv "$name")" >> .env
+              done
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
