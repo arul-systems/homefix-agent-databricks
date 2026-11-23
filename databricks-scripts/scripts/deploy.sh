@@ -7,16 +7,18 @@ BUNDLE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$BUNDLE_DIR/.env}"
 cd "$BUNDLE_DIR"
 
-if [[ ! -f "$ENV_FILE" ]]; then
+# Locally, settings come from .env. In CI there is no .env; the same names come from the environment.
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+elif [[ -z "${CI:-}" ]]; then
   echo "error: $ENV_FILE not found (cp .env.example .env and fill it in)" >&2
   exit 1
 fi
-set -a
-# shellcheck disable=SC1090
-source "$ENV_FILE"
-set +a
 
-: "${OPENAI_API_KEY:?OPENAI_API_KEY must be set in $ENV_FILE}"
+: "${OPENAI_API_KEY:?OPENAI_API_KEY must be set (in $ENV_FILE, or in the environment in CI)}"
 
 # The CLI reads BUNDLE_VAR_<name> as bundle variables; the key never touches a file in the bundle.
 export BUNDLE_VAR_openai_api_key="$OPENAI_API_KEY"

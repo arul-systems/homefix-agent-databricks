@@ -1,0 +1,71 @@
+# Deploy homefix-agent to Databricks Apps with `agentbricks deploy`, as a Databricks service principal.
+#
+# Repository settings:
+#   secrets.DATABRICKS_CLIENT_ID      service principal OAuth client ID
+#   secrets.DATABRICKS_CLIENT_SECRET  service principal OAuth secret
+#   vars.DATABRICKS_HOST              workspace URL, e.g. https://dbc-xxxx.cloud.databricks.com
+# The model-services job afterwards also needs secrets.OPENAI_API_KEY (see deploy-model-services.yml).
+name: Deploy agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "homefix-agent/**"
+      - ".github/workflows/deploy-agent.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-agent
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: homefix-agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: databricks/setup-cli@v1.27.0
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install Agent Bricks CLI
+        run: uv tool install databricks-agentbricks==0.11.0
+
+      - name: Write Databricks profile (OAuth M2M)
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          : "${DATABRICKS_HOST:?Set the DATABRICKS_HOST repository variable}"
+          umask 077
+          cat > ~/.databrickscfg <<EOF
+          [ci]
+          host          = ${DATABRICKS_HOST}
+          client_id     = ${DATABRICKS_CLIENT_ID}
+          client_secret = ${DATABRICKS_CLIENT_SECRET}
+          EOF
+
+      - name: Test
+        run: uv run pytest -q -m "not live"
+
+      - name: Deploy
+        env:
+          AGENTBRICKS_DISABLE_AGENT_HINT: "1"
+        # deployment_name in agent.toml is "list", so this updates the app agent-bricks-list.
+        run: agentbricks --profile ci deploy list --source .
+
+  # Re-apply the model-service grants and the agent-ui CAN_USE grant, in case the deploy recreated
+  # the app (a new app gets a new service principal and an empty permission list).
+  model-services:
+    needs: deploy
+    uses: ./.github/workflows/deploy-model-services.yml
+    secrets: inherit

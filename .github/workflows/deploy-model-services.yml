@@ -1,0 +1,62 @@
+# Deploy the AI Gateway bundle (schema, OpenAI secret, model provider service, model services,
+# grants) by running databricks-scripts/scripts/deploy.sh as a Databricks service principal.
+#
+# Repository settings:
+#   secrets.DATABRICKS_CLIENT_ID      service principal OAuth client ID
+#   secrets.DATABRICKS_CLIENT_SECRET  service principal OAuth secret
+#   secrets.OPENAI_API_KEY            stored in the UC secret used by the OpenAI provider service
+#   vars.DATABRICKS_HOST              workspace URL, e.g. https://dbc-xxxx.cloud.databricks.com
+#   vars.AGENT_UI_CLIENT_ID           (optional) agent-ui service principal to grant CAN_USE on the app
+name: Deploy model services
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "databricks-scripts/**"
+      - ".github/workflows/deploy-model-services.yml"
+  workflow_dispatch:
+  # Also run after an agent deploy, which can recreate the app with a new service principal.
+  workflow_call:
+
+concurrency:
+  group: deploy-model-services
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: databricks-scripts
+    env:
+      DATABRICKS_CONFIG_PROFILE: ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: databricks/setup-cli@v1.27.0
+
+      - name: Write Databricks profile (OAuth M2M)
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          : "${DATABRICKS_HOST:?Set the DATABRICKS_HOST repository variable}"
+          umask 077
+          cat > ~/.databrickscfg <<EOF
+          [ci]
+          host          = ${DATABRICKS_HOST}
+          client_id     = ${DATABRICKS_CLIENT_ID}
+          client_secret = ${DATABRICKS_CLIENT_SECRET}
+          EOF
+
+      - name: Deploy
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AGENT_UI_CLIENT_ID: ${{ vars.AGENT_UI_CLIENT_ID }}
+        run: ./scripts/deploy.sh

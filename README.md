@@ -12,10 +12,6 @@ cost estimates, permit guidance).
 
 ![HomeFix architecture](docs/architecture.png)
 
-The diagram source is [`docs/architecture.d2`](docs/architecture.d2) ([D2](https://d2lang.com)). After
-editing it, regenerate the PNG from the repo root:
-
-
 ### Reference architecture
 
 | Layer | What this repo uses | Why |
@@ -32,9 +28,10 @@ editing it, regenerate the PNG from the repo root:
 
 | Folder | Contents |
 | --- | --- |
-| [`databricks-scripts/`](databricks-scripts/README.md) | Bundle that creates the UC schema, OpenAI secret, model provider service, the three model services with rate limits, and the grants. `scripts/deploy.sh` and `scripts/undeploy.sh`. |
+| [`databricks-scripts/`](databricks-scripts/) | Bundle that creates the UC schema, OpenAI secret, model provider service, the three model services with rate limits, and the grants. `scripts/deploy.sh` and `scripts/undeploy.sh`. |
 | [`homefix-agent/`](homefix-agent/README.md) | The custom agent (API only): graph in `agent/agent.py`, one file per node with its tools in `agent/node/`. |
-| [`agent-ui/`](agent-ui/README.md) | Next.js chat frontend with streaming replies and approve/reject for gated actions. |
+| [`agent-ui/`](agent-ui/) | Next.js chat frontend with streaming replies and approve/reject for gated actions. |
+| `.github/workflows/` | GitHub Actions that deploy the model services and the agent (see [CI/CD](#cicd)). |
 | `amplify.yml` | Amplify build spec for `agent-ui` (writes the server-side `.env` from Amplify environment variables). |
 
 ## Getting started
@@ -46,6 +43,27 @@ editing it, regenerate the PNG from the repo root:
    Run it after the agent app exists, and again whenever the app is recreated.
 3. **Run the frontend:** in `agent-ui/`, copy `.env.example` to `.env.local`, fill it in, and run
    `npm install && npm run dev`, or deploy it to Amplify with `amplify.yml`.
+
+## CI/CD
+
+Two GitHub Actions deploy on pushes to `main`; both can also be run by hand (`workflow_dispatch`).
+They sign in as a Databricks service principal through an OAuth M2M profile written at run time.
+
+| Workflow | Runs when | Does |
+| --- | --- | --- |
+| `deploy-model-services.yml` | `databricks-scripts/**` changes | Runs `databricks-scripts/scripts/deploy.sh` (bundle deploy plus grants). |
+| `deploy-agent.yml` | `homefix-agent/**` changes | Runs the tests, then `agentbricks deploy list`, then the model-services workflow, so the grants follow the app if the deploy recreated it. |
+
+Repository settings:
+
+- Secrets: `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, `OPENAI_API_KEY`.
+- Variables: `DATABRICKS_HOST` (workspace URL) and, optionally, `AGENT_UI_CLIENT_ID`.
+
+The deploying service principal needs to manage what it deploys: `CAN_MANAGE` on the
+`agent-bricks-list` app (and access to its Lakebase stores and MLflow experiment), and on the catalog
+`USE_CATALOG` and `CREATE_SCHEMA`, plus ownership or `MANAGE` on the `homefix_ai` schema and its
+objects. The bundle keeps its deployment state in `/Workspace/Shared/.bundle/create-model-service/dev`,
+so local deploys and CI manage the same resources; the service principal needs write access there.
 
 ## Callouts and known gaps
 

@@ -76,3 +76,7 @@ targets:
   dev:
     default: true
     # Workspace comes from the auth profile (DATABRICKS_CONFIG_PROFILE in .env, or -p/--profile).
+    workspace:
+      # Shared deployment state, so a local deploy (your user) and the GitHub Action (a service
+      # principal) manage the same resources instead of each keeping its own state.
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
