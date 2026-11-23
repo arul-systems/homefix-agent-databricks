@@ -36,6 +36,9 @@ from databricks_agentkit.langgraph.session_store import (
 )
 from databricks_agentkit.runtime.auth import AuthError
 
+# Nodes that run a specialist agent as a subgraph (see run_agent's streaming).
+SPECIALIST_NODES = frozenset({ORDER_MANAGEMENT, BUILDING_PLAN})
+
 # The chat app shows this as the agent's default model. The graph doesn't use a single model: each
 # node uses its own model service, so the chat app's model picker has no effect.
 MODEL = ROUTER_MODEL
@@ -180,14 +183,28 @@ async def run_agent(
 
     last_update: Any = None
     with start_trace(name="invoke", inputs=agent_input, session_id=session_id) as span:
-        async for event in graph.astream(
+        # subgraphs=True streams from inside each specialist (its own agent graph) as it runs:
+        # model tokens, tool calls, and tool results arrive as they happen instead of all at once
+        # when the specialist node finishes. Events keep the (mode, payload) shape.
+        async for namespace, mode, payload in graph.astream(
             input=agent_input,
             config=config,
             stream_mode=["updates", "messages"],
             durability="sync",
+            subgraphs=True,
         ):
-            if event[0] == "updates":
-                last_update = event[1]
-            yield event
+            if mode == "updates":
+                if not namespace:
+                    last_update = payload
+                    # A specialist node's update repeats the messages already streamed from inside
+                    # its subgraph; keep only the router and the interrupt.
+                    payload = {
+                        k: v for k, v in payload.items() if k not in SPECIALIST_NODES
+                    }
+                elif "__interrupt__" in payload:
+                    continue  # the parent graph reports the same interrupt
+                if not payload:
+                    continue
+            yield mode, payload
         if span is not None and last_update is not None:
             span.set_outputs(last_update)

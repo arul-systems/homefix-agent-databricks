@@ -19,7 +19,8 @@ class _ScriptedModel(GenericFakeChatModel):
 
 
 def _model(*messages: AIMessage) -> _ScriptedModel:
-    return _ScriptedModel(messages=iter(messages))
+    # The fake can't stream tool-call messages with empty content, so it never streams.
+    return _ScriptedModel(messages=iter(messages), disable_streaming=True)
 
 
 @pytest.fixture
@@ -115,3 +116,33 @@ async def test_cancel_order_pauses_for_approval_then_resumes(graph_factory, monk
     assert result["messages"][-1].text == "Order HF-1003 is cancelled."
     # The user's message appears once: the specialist returns only the messages it added.
     assert [m.text for m in result["messages"] if m.type == "human"] == ["Cancel order HF-1003"]
+
+
+@pytest.mark.asyncio
+async def test_run_agent_streams_specialist_steps_once(graph_factory):
+    """With subgraph streaming, each specialist message and the interrupt are emitted exactly once."""
+    graph = await graph_factory(
+        "ORDER",
+        order_msgs=[
+            AIMessage("", tool_calls=[{"id": "c1", "name": "get_order_status", "args": {"order_id": "HF-1001"}}]),
+            AIMessage(
+                "",
+                tool_calls=[{"id": "c2", "name": "cancel_order", "args": {"order_id": "HF-1003", "reason": "x"}}],
+            ),
+        ],
+    )
+    events = [
+        e
+        async for e in agent_module.run_agent(
+            {"messages": [{"role": "user", "content": "Status of HF-1001, then cancel HF-1003"}]},
+            session_id="stream-1",
+            actor="actor-1",
+            graph=graph,
+        )
+    ]
+    updates = [payload for mode, payload in events if mode == "updates"]
+    streamed = [m for u in updates for node in u.values() if isinstance(node, dict) for m in node.get("messages", [])]
+    ids = [m.id for m in streamed]
+    assert len(ids) == len(set(ids)), "a message was streamed twice"
+    assert [m.type for m in streamed] == ["ai", "tool", "ai"]
+    assert sum("__interrupt__" in u for u in updates) == 1
