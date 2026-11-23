@@ -12,6 +12,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, tool
 
 from agent.common import ORDER_MANAGEMENT_MODEL, chat_model, run_specialist
+from agent.state import HomeFixState
 
 SYSTEM_PROMPT = """You are the HomeFix order management assistant.
 Help customers check order status, review their orders, and cancel orders.
@@ -88,7 +89,7 @@ def build(shared_tools: list[BaseTool]):
         name="order_management_agent",
     )
 
-    async def order_management(state: dict, config: RunnableConfig) -> dict:
+    async def order_management(state: HomeFixState, config: RunnableConfig) -> dict:
         return await run_specialist(agent, state, config)
 
     return order_management

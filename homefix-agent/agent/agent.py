@@ -28,24 +28,19 @@ from databricks_agentkit.langgraph.session_store import (
 )
 from databricks_agentkit.runtime.auth import AuthError
 from langchain.agents.middleware.human_in_the_loop import HITLResponse
-from langgraph.graph import END, START, MessagesState, StateGraph
+from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
 from pydantic import TypeAdapter, ValidationError
 
 from agent.common import app_workspace_client
 from agent.node import REQUIRE_APPROVAL, building_plan, order_management
 from agent.node.router import BUILDING_PLAN, ORDER_MANAGEMENT, next_node, router
+from agent.state import HomeFixState
 
 # Nodes that run a specialist agent as a subgraph (see run_agent's streaming).
 SPECIALIST_NODES = frozenset({ORDER_MANAGEMENT, BUILDING_PLAN})
 
 __all__ = ["REQUIRE_APPROVAL", "configure", "create_agent_graph", "run_agent"]
-
-
-class HomeFixState(MessagesState):
-    """Conversation messages plus the specialist the router picked for this turn."""
-
-    route: str
 
 
 def configure() -> None:

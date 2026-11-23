@@ -32,8 +32,8 @@ def graph_factory(monkeypatch):
     monkeypatch.delenv("AGENT_MEMORY_STORE", raising=False)
     monkeypatch.setattr(agent_module, "genie_tools", lambda **_: [])
 
-    def make(route_label: str, order_msgs=(), plan_msgs=()):
-        monkeypatch.setattr(router, "chat_model", lambda *a, **k: _model(AIMessage(route_label)))
+    def make(route: str, order_msgs=(), plan_msgs=()):
+        monkeypatch.setattr(router, "chat_model", lambda *a, **k: _model(_route_message(route)))
         monkeypatch.setattr(order_management, "chat_model", lambda *a, **k: _model(*order_msgs))
         monkeypatch.setattr(building_plan, "chat_model", lambda *a, **k: _model(*plan_msgs))
         return agent_module.create_agent_graph("actor-1")
@@ -45,17 +45,16 @@ def _config(session: str) -> dict:
     return {"configurable": {"thread_id": session, "actor_id": "actor-1"}}
 
 
-@pytest.mark.parametrize(
-    ("label", "expected"), [("ORDER", "order_management"), ("plan", "building_plan"), ("?", "building_plan")]
-)
-def test_router_parses_label(label, expected):
-    assert router._parse(label) == expected
+def _route_message(route: str) -> AIMessage:
+    """What the router model returns for with_structured_output(RouteDecision): a tool call."""
+    args = {"route": route, "rationale": {"reason": "test", "confidence": 0.9}}
+    return AIMessage("", tool_calls=[{"id": "r1", "name": "RouteDecision", "args": args}])
 
 
 @pytest.mark.asyncio
 async def test_plan_request_goes_to_building_plan(graph_factory):
     graph = await graph_factory(
-        "PLAN",
+        "building_plan",
         plan_msgs=[
             AIMessage(
                 "",
@@ -88,7 +87,7 @@ async def test_cancel_order_pauses_for_approval_then_resumes(graph_factory, monk
         {**order_management._ORDERS["HF-1003"], "status": "processing"},
     )
     graph = await graph_factory(
-        "ORDER",
+        "order_management",
         order_msgs=[
             AIMessage(
                 "",
@@ -122,7 +121,7 @@ async def test_cancel_order_pauses_for_approval_then_resumes(graph_factory, monk
 async def test_run_agent_streams_specialist_steps_once(graph_factory):
     """With subgraph streaming, each specialist message and the interrupt are emitted exactly once."""
     graph = await graph_factory(
-        "ORDER",
+        "order_management",
         order_msgs=[
             AIMessage("", tool_calls=[{"id": "c1", "name": "get_order_status", "args": {"order_id": "HF-1001"}}]),
             AIMessage(

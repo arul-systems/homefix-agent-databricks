@@ -10,12 +10,13 @@ from functools import lru_cache
 from typing import Any
 
 from databricks.sdk import WorkspaceClient
+from databricks_agentkit import workspace_client, workspace_headers
+from databricks_agentkit.langgraph.messages import gateway_messages
 from databricks_langchain import ChatDatabricks
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
-from databricks_agentkit import workspace_client, workspace_headers
-from databricks_agentkit.langgraph.messages import gateway_messages
+from agent.state import HomeFixState
 
 # Unity Catalog schema that holds the model services (bundle variables `catalog` and `schema`).
 MODEL_SERVICE_SCHEMA = os.getenv(
@@ -84,13 +85,13 @@ def conversation(messages: list[AnyMessage]) -> list[AnyMessage]:
     ]
 
 
-async def run_specialist(agent: Any, state: dict, config: RunnableConfig) -> dict:
+async def run_specialist(agent: Any, state: HomeFixState, config: RunnableConfig) -> dict:
     """Run a specialist agent on the conversation and return only the messages it added.
 
     The agent runs as a subgraph inside the node, so it shares the parent's checkpointer: a
     human-approval interrupt pauses the whole graph and resuming continues inside the subgraph.
     """
-    history = conversation(state["messages"])
+    history = conversation(state.messages)
     seen = {m.id for m in history}
     result = await agent.ainvoke({"messages": history}, config)
     return {"messages": [m for m in result["messages"] if m.id not in seen]}

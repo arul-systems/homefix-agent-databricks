@@ -12,6 +12,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, tool
 
 from agent.common import BUILDING_PLAN_MODEL, chat_model, run_specialist
+from agent.state import HomeFixState
 
 SYSTEM_PROMPT = """You are the HomeFix building plan assistant.
 Help customers plan home-improvement projects: scope, step-by-step instructions, materials,
@@ -112,7 +113,7 @@ def build(shared_tools: list[BaseTool]):
         name="building_plan_agent",
     )
 
-    async def building_plan(state: dict, config: RunnableConfig) -> dict:
+    async def building_plan(state: HomeFixState, config: RunnableConfig) -> dict:
         return await run_specialist(agent, state, config)
 
     return building_plan

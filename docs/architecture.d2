@@ -40,6 +40,13 @@ classes: {
       stroke: "#16A34A"
     }
   }
+  deploy: {
+    style: {
+      stroke: "#7C3AED"
+      stroke-dash: 5
+      font-color: "#5B21B6"
+    }
+  }
   warn: {
     style: {
       fill: "#FEF2F2"
@@ -169,6 +176,24 @@ databricks: Databricks workspace {
   }
 }
 
+github: "GitHub\narul-systems/homefix-agent-databricks" {
+  icon: ${simple}/github.svg
+  style: {
+    fill: "#F6F8FA"
+    stroke: "#24292F"
+  }
+
+  agent_wf: "deploy-agent.yml\non homefix-agent/** changes\ntests → agentbricks deploy" {
+    class: node
+    icon: ${simple}/githubactions.svg
+  }
+  models_wf: "deploy-model-services.yml\non databricks-scripts/** changes\ndeploy.sh → bundle deploy + grants" {
+    class: node
+    icon: ${simple}/githubactions.svg
+  }
+  agent_wf -> models_wf: "then (workflow_call):\nre-apply grants" {style.stroke-dash: 3}
+}
+
 openai: "OpenAI API\ngpt-6-sol" {
   class: node
   icon: ${simple}/openai.svg
@@ -188,6 +213,12 @@ databricks.gateway.l70 -> databricks.fm
 databricks.gateway.gpt -> databricks.provider
 databricks.provider -> openai
 databricks.provider -> databricks.uc.secret: "API key" {style.stroke-dash: 3}
+
+# CI/CD (dashed purple): GitHub Actions deploy as a service principal (OAuth M2M); Amplify builds
+# agent-ui from the same repo on every push to main.
+github.agent_wf -> databricks.agent: "agentbricks deploy" {class: deploy}
+github.models_wf -> databricks.gateway: "bundle deploy\nmodel services + grants" {class: deploy}
+github -> aws.ui: "push to main\nAmplify build (amplify.yml)" {class: deploy}
 
 # State and observability
 databricks.agent -> databricks.lakebase: "checkpoints · memory\nrecovery"
