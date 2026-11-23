@@ -22,6 +22,6 @@ env:
 - name: DATABRICKS_AGENTBRICKS_RUNTIME_STORE_DATABASE
   value: agent-bricks-list
 - name: DATABRICKS_AGENTBRICKS_RUNTIME_STORE_USERNAME
-  value: 0dfb44cd-1899-4dfb-8562-454363ad5577
+  value: 89466283-3a96-421f-8ba9-282ebf5217ef
 - name: DATABRICKS_AGENTBRICKS_RUNTIME_STORE_SCHEMA
   value: databricks_agentkit_runtime

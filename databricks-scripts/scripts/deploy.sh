@@ -50,5 +50,18 @@ databricks bundle validate "$@"
 echo "==> Deploying bundle (schema, OpenAI secret, model provider service, model services)"
 databricks bundle deploy "$@"
 
+# Let the web frontend's service principal (agent-ui) call the agent app. A recreated app starts with
+# only its owner on the permission list, so grant this on every deploy. update-permissions adds to the
+# existing list rather than replacing it.
+if [[ -n "${AGENT_UI_CLIENT_ID:-}" ]]; then
+  for client_id in ${AGENT_UI_CLIENT_ID//,/ }; do
+    echo "==> Granting CAN_USE on app '$AGENT_APP_NAME' to service principal $client_id"
+    databricks apps update-permissions "$AGENT_APP_NAME" -o json --json \
+      "{\"access_control_list\":[{\"service_principal_name\":\"$client_id\",\"permission_level\":\"CAN_USE\"}]}" >/dev/null
+  done
+else
+  echo "==> AGENT_UI_CLIENT_ID not set; skipping the agent-ui CAN_USE grant on app '$AGENT_APP_NAME'"
+fi
+
 echo "==> Done."
 databricks bundle summary "$@" | sed -n '/Resources:/,$p'

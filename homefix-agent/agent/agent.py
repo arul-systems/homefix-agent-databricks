@@ -14,14 +14,6 @@ from collections.abc import AsyncGenerator, Callable
 from typing import Any
 
 from databricks.sdk import WorkspaceClient
-from langchain.agents.middleware.human_in_the_loop import HITLResponse
-from langgraph.graph import END, START, MessagesState, StateGraph
-from langgraph.types import Command
-from pydantic import TypeAdapter, ValidationError
-
-from agent.common import ROUTER_MODEL, app_workspace_client
-from agent.node import REQUIRE_APPROVAL, building_plan, order_management
-from agent.node.router import BUILDING_PLAN, ORDER_MANAGEMENT, next_node, router
 from databricks_agentkit.langgraph import (
     checkpointer,
     configure_tracing,
@@ -35,15 +27,19 @@ from databricks_agentkit.langgraph.session_store import (
     invocation_metadata,
 )
 from databricks_agentkit.runtime.auth import AuthError
+from langchain.agents.middleware.human_in_the_loop import HITLResponse
+from langgraph.graph import END, START, MessagesState, StateGraph
+from langgraph.types import Command
+from pydantic import TypeAdapter, ValidationError
+
+from agent.common import app_workspace_client
+from agent.node import REQUIRE_APPROVAL, building_plan, order_management
+from agent.node.router import BUILDING_PLAN, ORDER_MANAGEMENT, next_node, router
 
 # Nodes that run a specialist agent as a subgraph (see run_agent's streaming).
 SPECIALIST_NODES = frozenset({ORDER_MANAGEMENT, BUILDING_PLAN})
 
-# The chat app shows this as the agent's default model. The graph doesn't use a single model: each
-# node uses its own model service, so the chat app's model picker has no effect.
-MODEL = ROUTER_MODEL
-
-__all__ = ["MODEL", "REQUIRE_APPROVAL", "configure", "create_agent_graph", "run_agent"]
+__all__ = ["REQUIRE_APPROVAL", "configure", "create_agent_graph", "run_agent"]
 
 
 class HomeFixState(MessagesState):

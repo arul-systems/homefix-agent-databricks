@@ -28,6 +28,13 @@ schema and `EXECUTE` on each model service. It finds the principal from `AGENT_A
 (default `agent-bricks-list`). Deploy the agent app first, then run `deploy.sh`. If the app is
 recreated, it gets a new service principal, so run `deploy.sh` again.
 
+## Access for the web frontend
+
+`agent-ui` calls the agent app as its own service principal (OAuth client ID and secret). If
+`AGENT_UI_CLIENT_ID` is set in `.env`, `deploy.sh` grants that principal `CAN_USE` on the agent app
+(comma-separate several IDs). A recreated app starts with only its owner on the permission list and
+`agent-ui` gets a 401, so rerun `deploy.sh` after recreating the app.
+
 ## Tear down
 
 `./scripts/undeploy.sh` deletes the model services, provider, secret and schema

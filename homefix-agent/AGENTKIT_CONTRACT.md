@@ -120,8 +120,8 @@ A LangGraph interrupt ends the current invocation and checkpoints the pending ac
 set). The runtime namespaces the session by the authenticated user; approval does not transfer a
 pending action to another user. Build a new graph and tool clients from the resume request's
 `workspace_client_for` resolver. Never persist the resolver, user credentials, or a graph holding
-those clients in checkpoint state. Browser approvals use the existing login session; obtain new
-authentication when it expires.
+those clients in checkpoint state. Client approvals use the caller's existing authentication; obtain
+new authentication when it expires.
 
 This is a first attempt for a new invocation, not `@app.recover`. OBO automatic recovery remains
 unsupported because no new authenticated user request supplies credentials.
@@ -142,9 +142,7 @@ invocation's committed outputs, then resumes the same graph. Saved messages seed
 without being emitted again. Keep checkpoint history and task writes available during recovery.
 Checkpoint and Runtime Store event writes are not atomic.
 
-## Optional chat app
+## Chat app
 
-No CLI command requires the chat UI. The default overlay supplies it; `--disable-chat-app` omits
-it. When adopting it, inspect `CHAT_APP.md`, `runtime/ui.py`, and browser code. Adapt model choice,
-history, interrupts, and authentication to the actual graph. Its message-oriented assumptions must
-not silently change custom application behavior.
+This project has no chat UI (equivalent to `--disable-chat-app`); no CLI command requires one. The
+web frontend lives in `../agent-ui` and calls `/api/invocations`.

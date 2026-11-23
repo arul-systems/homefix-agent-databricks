@@ -34,8 +34,6 @@ requests. Exit 75 means it is still deploying; run the same command again. Don't
 | Model service names, chat model factory | `agent/common.py` |
 | Managed runtime `invoke`/`recover` hooks and input/output translation | `runtime/adapter.py` |
 | `DurableAgentServer` construction and hook registration | `runtime/main.py` |
-| Browser and managed-state routes | `runtime/ui.py` |
-| Browser behavior | `ui/app.js` |
 
 Shared adapters come from `databricks_agentkit.langgraph` and `databricks_agentkit.runtime`. Consult
 their docstrings for API details. Update the shared contract and relevant tests when integration

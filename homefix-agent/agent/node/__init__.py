@@ -11,7 +11,7 @@ from agent.node import building_plan, order_management
 
 
 def all_tools() -> list[BaseTool]:
-    """Every local tool across the specialist nodes (shown in the chat app's Tools pane)."""
+    """Every local tool across the specialist nodes."""
     return [*order_management.TOOLS, *building_plan.TOOLS]
 
 

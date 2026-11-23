@@ -117,9 +117,7 @@ application session:
 
 For OBO tools (`auth = "user"`), the same signed-in user submits the approval as a new
 invocation. Keep the same `session_id` and, if supplied, `input.actor`. The new request supplies
-its own user credentials; the paused invocation's credentials are discarded. The browser normally
-uses its existing authenticated session, so approval does not require a page refresh or another
-login unless that session has expired. Automatic crash recovery still cannot recover OBO work.
+its own user credentials; the paused invocation's credentials are discarded. Automatic crash recovery still cannot recover OBO work.
 
 Malformed middleware decisions return `INVALID_APPROVAL` before the resume value is checkpointed,
 so the user can correct the decision and submit it with a new invocation ID.
@@ -138,11 +136,11 @@ Deployment with a Runtime Store supports invocation recovery after worker loss. 
 persistence requires a Session Store separately. Recovery can replay work, so tools must tolerate
 repeated side effects. See [Recovery and durability](AGENTKIT_CONTRACT.md#recovery-and-durability).
 
-## Chat app
+## Clients
 
-The browser UI is included by default. It generates a stable application session ID in local
-storage, sends it as the top-level `session_id`, and generates a fresh invocation UUID per turn.
-Use `agentbricks init --framework langgraph --disable-chat-app` for API-only output.
+This project is API only: it serves `/api/invocations` and has no browser UI. The web frontend is
+`../agent-ui` (Next.js). A client keeps a stable application session ID, sends it as the top-level
+`session_id`, and generates a fresh invocation UUID per turn.
 
 ## Configure and deploy
 
@@ -158,8 +156,8 @@ Use `agentbricks init --framework langgraph --disable-chat-app` for API-only out
   links it to the UC tables, and grants the app access. A UC location can only be linked to an
   experiment that has no traces yet.
 - Bind long-term memory with `agentbricks memory bind <store>`; `agentbricks deploy` creates the
-  store if it doesn't exist. Memory and session stores are off by default in `agentbricks dev` (the
-  chat app shows "Not connected" for memory locally) and connect after deploy. To start with
+  store if it doesn't exist. Memory and session stores are off by default in `agentbricks dev` and
+  connect after deploy. To start with
   memories already in the store, create it and add entries before you bind and deploy:
 
   ```bash
@@ -168,8 +166,8 @@ Use `agentbricks init --framework langgraph --disable-chat-app` for API-only out
     --path /preferences/style.md --content "Prefers concise answers."
   ```
 
-  `--path` is the entry's key in the store, not a file on your machine; the deployed chat app uses
-  the signed-in user's email as the actor.
+  `--path` is the entry's key in the store, not a file on your machine; pass the same value as
+  `input.actor` when invoking the agent so it can recall them.
 - Route the agent's model through a Unity Gateway model service you own with
   `agentbricks experimental models bind`, then search for a better model and prompt on your own
   eval set with `agentbricks experimental models upgrade`. These commands are experimental, so

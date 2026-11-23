@@ -1,0 +1,195 @@
+# HomeFix Agent on Databricks: reference architecture.
+# Render: d2 --layout elk docs/architecture.d2 docs/architecture.png
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+    theme-id: 0
+    pad: 40
+  }
+  tabler: https://cdn.jsdelivr.net/npm/@tabler/icons@3.31.0/icons/outline
+  simple: https://cdn.jsdelivr.net/npm/simple-icons@13.21.0/icons
+}
+
+direction: right
+
+title: |md
+  # HomeFix Agent on Databricks
+  Custom agent (Agent Bricks on Databricks Apps) calling models through AI Gateway model services
+| {near: top-center}
+
+classes: {
+  node: {
+    style: {
+      border-radius: 8
+      font-size: 16
+    }
+  }
+  model: {
+    shape: rectangle
+    style: {
+      fill: "#EEF2FF"
+      stroke: "#6366F1"
+      border-radius: 8
+    }
+  }
+  data: {
+    shape: cylinder
+    style: {
+      fill: "#F0FDF4"
+      stroke: "#16A34A"
+    }
+  }
+  warn: {
+    style: {
+      fill: "#FEF2F2"
+      stroke: "#DC2626"
+      font-color: "#991B1B"
+      stroke-dash: 4
+      border-radius: 8
+    }
+  }
+}
+
+users: Customers {
+  shape: image
+  icon: https://icons.terrastruct.com/essentials%2F359-users.svg
+}
+
+aws: AWS {
+  icon: ${simple}/awsamplify.svg
+  style: {
+    fill: "#FFF7ED"
+    stroke: "#F97316"
+  }
+
+  ui: "agent-ui\nNext.js on AWS Amplify" {
+    icon: ${simple}/nextdotjs.svg
+    style.fill: "#FFFFFF"
+
+    page: "Chat page\n(streams replies,\napprove / reject)" {
+      class: node
+      icon: ${tabler}/device-desktop.svg
+    }
+    chat: "/chat route\n(server only, holds\nclient ID + secret)" {
+      class: node
+      icon: ${tabler}/api.svg
+    }
+    page -> chat: "POST /chat\nNDJSON stream"
+  }
+}
+
+databricks: Databricks workspace {
+  icon: ${simple}/databricks.svg
+  style: {
+    fill: "#FFF5F2"
+    stroke: "#FF3621"
+  }
+
+  oauth: "OAuth token endpoint\n/oidc/v1/token\n(service principal M2M)" {
+    class: node
+    icon: ${tabler}/key.svg
+  }
+
+  agent: "homefix-agent\nDatabricks App · Agent Bricks DurableAgentServer" {
+    icon: ${tabler}/brain.svg
+    style.fill: "#FFFFFF"
+
+    api: "/api/invocations\n(SSE stream)" {
+      class: node
+      icon: ${tabler}/api.svg
+    }
+    router: "Router node\nclassify ORDER / PLAN" {
+      class: node
+      icon: ${tabler}/route.svg
+    }
+    orders: "Order management\nlist · status · cancel" {
+      class: node
+      icon: ${simple}/langchain.svg
+    }
+    plan: "Building plan\nmaterials · cost · permits" {
+      class: node
+      icon: ${simple}/langchain.svg
+    }
+    hitl: "Human approval\n(cancel_order)" {
+      class: node
+      icon: ${tabler}/hand-stop.svg
+    }
+
+    api -> router
+    router -> orders: ORDER
+    router -> plan: PLAN
+    orders -> hitl: "pause / resume" {style.stroke-dash: 3}
+  }
+
+  gateway: "AI Gateway · Unity Catalog model services" {
+    icon: ${tabler}/building-bridge-2.svg
+    style.fill: "#FFFFFF"
+
+    l8: "homefix-llama-3-1-8b-instruct" {class: model}
+    l70: "homefix-llama-3-3-70b-instruct" {class: model}
+    gpt: "homefix-gpt-6-sol" {class: model}
+    limits: "Rate limits\nper user + per service" {
+      class: node
+      icon: ${tabler}/hourglass.svg
+    }
+    noguard: "No guardrails\nprompts and PII reach\nthe models as is" {
+      class: warn
+      icon: ${tabler}/shield-off.svg
+    }
+  }
+
+  fm: "Foundation Model APIs\nLlama 3.1 8B · Llama 3.3 70B\n(pay-per-token)" {
+    class: node
+    icon: ${simple}/meta.svg
+  }
+  provider: "Model provider service\nopenai" {
+    class: node
+    icon: ${simple}/openai.svg
+  }
+
+  uc: Unity Catalog {
+    icon: ${tabler}/lock.svg
+    style.fill: "#FFFFFF"
+
+    secret: "openai-api-key\n(UC secret)" {
+      class: node
+      icon: ${tabler}/key.svg
+    }
+    traces: "homefix_traces\nspans + logs tables" {class: data}
+  }
+
+  lakebase: "Lakebase\nSession · Memory · Runtime stores" {
+    class: node
+    icon: ${simple}/postgresql.svg
+  }
+  mlflow: "MLflow experiment\nhomefix-agent-uc" {
+    class: node
+    icon: ${simple}/mlflow.svg
+  }
+}
+
+openai: "OpenAI API\ngpt-6-sol" {
+  class: node
+  icon: ${simple}/openai.svg
+}
+
+# Request path
+users -> aws.ui.page: HTTPS
+aws.ui.chat -> databricks.oauth: "client credentials"
+aws.ui.chat -> databricks.agent.api: "Bearer token\n(CAN_USE on app)"
+
+# Model calls through AI Gateway
+databricks.agent.router -> databricks.gateway.l8
+databricks.agent.orders -> databricks.gateway.l70
+databricks.agent.plan -> databricks.gateway.gpt
+databricks.gateway.l8 -> databricks.fm
+databricks.gateway.l70 -> databricks.fm
+databricks.gateway.gpt -> databricks.provider
+databricks.provider -> openai
+databricks.provider -> databricks.uc.secret: "API key" {style.stroke-dash: 3}
+
+# State and observability
+databricks.agent -> databricks.lakebase: "checkpoints · memory\nrecovery"
+databricks.agent -> databricks.mlflow: traces
+databricks.mlflow -> databricks.uc.traces: "spans (OTLP)"
