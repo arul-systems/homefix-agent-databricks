@@ -86,18 +86,4 @@ customers.
   local building codes.
 - **Narrow human approval.** Only `cancel_order` requires approval. Any new tool with side effects
   needs its own entry in the node's `REQUIRE_APPROVAL`.
-- **Model quality.** Llama 3.3 70B sometimes writes a tool call as text (`<function=...>`) instead of
-  calling the tool. The router on Llama 3.1 8B returns a free-text label, and anything that isn't
-  "ORDER" goes to the building-plan specialist.
-- **Token usage.** Traces show much higher input-token counts than the prompts explain (tens of
-  thousands of tokens per question). This hasn't been investigated, and it affects both cost and
-  rate limits.
-- **Permissions reset when the agent app is recreated.** A new app gets a new service principal and
-  an empty permission list; rerun `databricks-scripts/scripts/deploy.sh` to restore the grants.
-- **Secrets handling.** The OpenAI key lives in a Unity Catalog secret. On Amplify, the service
-  principal secret is written into the server build's `.env`, so it is stored with the build
-  artifacts (never sent to the browser). A secrets manager read at runtime is safer.
-- **Not verified on Amplify.** Response streaming and long agent turns (20 s or more) haven't been
-  tested on Amplify's server-side compute; replies may arrive all at once or time out.
-- **Workspace-specific defaults.** Catalog, schema, profile, and app names are hard-coded defaults
-  for one workspace; override them through `.env` and bundle variables for another workspace.
+
